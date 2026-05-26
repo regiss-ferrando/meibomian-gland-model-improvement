@@ -1,0 +1,80 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+pip-wheel-metadata/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+pip-log.txt
+pip-delete-this-directory.txt
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Virtual environments
+.venv
+venv/
+ENV/
+env/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+*.ipynb
+
+# PyCharm
+.idea/
+
+# Datasets (keep structure, exclude large files)
+plans/meibomianGlandImprovment/data/raw/*
+plans/meibomianGlandImprovment/data/processed/*
+plans/meibomianGlandImprovment/data/augmented/*
+plans/meibomianGlandImprovment/data/external/*
+!plans/meibomianGlandImprovment/data/.gitkeep
+!plans/meibomianGlandImprovment/data/raw/.gitkeep
+!plans/meibomianGlandImprovment/data/processed/.gitkeep
+!plans/meibomianGlandImprovment/data/augmented/.gitkeep
+!plans/meibomianGlandImprovment/data/external/.gitkeep
+
+# Model checkpoints (keep configs, exclude weights)
+plans/meibomianGlandImprovment/models/checkpoints/*.pth
+plans/meibomianGlandImprovment/models/checkpoints/*.pt
+plans/meibomianGlandImprovment/models/checkpoints/*.onnx
+
+# Results and logs
+plans/meibomianGlandImprovment/results/**/*.png
+plans/meibomianGlandImprovment/results/**/*.jpg
+plans/meibomianGlandImprovment/logs/*.log
+
+# OS-specific
+Thumbs.db
+.DS_Store
+
+# Other
+*.tmp
+*.bak
+*.backup

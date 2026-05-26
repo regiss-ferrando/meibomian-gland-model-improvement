@@ -1,0 +1,75 @@
+% Rapport 1 - 17/05/2026
+\documentclass[12pt,a4paper]{article}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage[french]{babel}
+\usepackage{graphicx}
+\usepackage{hyperref}
+\usepackage[top=2.5cm,bottom=2.5cm,left=2.5cm,right=2.5cm]{geometry}
+
+\title{Rapport 1}
+\author{Paul Ferrando-tello \\ Elora Flahaut}
+\date{17 mai 2026}
+
+\begin{document}
+\maketitle
+
+\section*{Présentation du sujet}
+Le projet sur lequel nous allons travailler est un des nouveaux projets du laboratoire. L'objectif du projet n'a pas encore été clairement défini, mais l'idée initiale serait « la détection précoce du syndrome de sécheresse oculaire par l'utilisation d'un casque ». Concrètement, à l'aide d'un modèle de deep learning et d'un casque de réalité virtuelle prenant en photo l'œil d'un utilisateur, on devrait pouvoir repérer des symptômes permettant un diagnostic précoce de la maladie.
+
+\vspace{0.5cm}
+
+En fonction des moyens disponibles, il se pourrait que le projet s'étende à d'autres maladies ou troubles de la vision.
+
+\section*{Notre travail jusqu'à présent}
+Pour le moment, le professeur à l'initiative du projet, Prf. Uchiyama, nous a demandé pour notre première semaine de travail un état de l'art sur tout ce qui avait été fait et publié sur l'œil et l'intelligence artificielle depuis la généralisation de l'utilisation du deep learning, afin d'établir ce qui avait déjà été fait et sur les moyens à disposition, notamment les jeux de données et modèles disponibles.
+
+\vspace{0.5cm}
+
+L'immense majorité des articles étaient produits à la suite de recherches, soit sur de l'aide au diagnostic d'une maladie de l'œil, soit sur l'eye-tracking (articles que nous avons éliminés car trop éloignés de notre sujet). Nous avons donc produit un tableau résumant, pour chaque maladie :
+\begin{itemize}
+\item si un jeu de données et/ou un modèle pré-entraîné étaient disponibles et réutilisables ;
+\item si des modèles entraînés sur ces jeux de données avaient eu une validation clinique ;
+\item s'ils étaient aujourd'hui utilisés dans le monde médical ;
+\item si les équipements nécessaires pour obtenir les images à faire analyser par l'IA pouvaient être implémentés dans un casque.
+\end{itemize}
+
+\vspace{0.5cm}
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=0.9\linewidth]{../images/State of the art sumary table.png}
+  \caption{Tableau récapitulatif de l'état de l'art}
+  \label{fig:etatdelart}
+\end{figure}
+
+\vspace{0.5cm}
+
+En plus de cela, nous avons constitué une bibliothèque avec tous les liens menant vers les différents jeux de données et modèles trouvés.
+
+\section*{Prochains travaux}
+À l'issue de notre travail, nous avons eu une réunion avec notre professeur afin de décider de la direction à suivre pour le projet. Il nous a dit qu'il souhaitait d'abord en discuter avec le directeur et les médecins du laboratoire, et en attendant nous a demandé de refaire une synthèse plus détaillée, cette fois-ci sur les jeux de données et les modèles que nous avions trouvés (angles de prise de vue, résolution, caméras utilisées...). Nous avons une autre réunion de prévue avec le directeur du laboratoire et lui ce mercredi pour rediscuter de notre avancée.
+
+\vspace{0.5cm}
+
+\section*{Méthode de travail}
+Nous travaillons sur notre projet tous les deux, sur nos ordinateurs personnels. Nous sommes laissés en autonomie quasi-totale, sans horaires de travail précis. Notre emplacement au laboratoire n'étant pas nécessairement le plus pratique pour travailler (nous arrivons malheureusement à une période où les locaux sont presque pleins) et le trajet jusqu'à l'université étant relativement long et cher, nous avons décidé de ne faire que 50\% de travail sur place, et nous faisons 50\% de télétravail.
+
+\vspace{0.5cm}
+
+Au niveau des outils utilisés, notre professeur nous a explicitement demandé d'exploiter au maximum l'intelligence artificielle pour améliorer notre productivité (nous n'avons pas le droit d'écrire de code nous même par exemple). Nous utilisons donc la version Student de copilot pour nous aider dans nos recherches et fournissons également des retours sur l'utilisation que nous en avons, sur sa demande.
+
+\vspace{0.5cm}
+
+Chaque fin de semaine se tient un meeting général sur Zoom, où tous les membres du laboratoire sont tenus de participer, et où deux étudiants présentent leur projet. Les présentations sont le plus souvent en japonais. Nous avons profité du dernier pour nous présenter aux autres étudiants avec quelques diapositives. En plus de cela, toutes les deux semaines se tient une réunion du groupe « computer vision » (toujours sur Zoom) qui contient 4 étudiants et dont nous faisons maintenant partie. Celle-ci se fait en anglais, et les étudiants présentent leurs avancées et ont des retours des professeurs. La prochaine est fixée au 29 mai.
+
+\vspace{0.5cm}
+
+\section*{Impressions}
+La vie sur place au Japon est finalement très similaire à celle qu'on a en France, à ceci près que le coût de la vie est moins cher. Le plus difficile reste la communication avec les locaux, les seules personnes parlant anglais étant nos professeurs et les étudiants internationaux. Heureusement, nous avons été très bien accueillis et aidés pour les démarches administratives, nombreuses et complexes pour les personnes ne parlant pas japonais. Nous nous sommes inscrits à des cours de japonais donnés par l'université.
+
+\vspace{0.5cm}
+
+Côté travail, l'autonomie complète est très confortable, puisqu'elle nous permet d'adapter notre emploi du temps à nos besoins. Nous avons tout de même décidé de garder un minimum le rythme français, en ne sortant visiter sur une journée que le week-end. L'utilisation de l'IA rend notre travail beaucoup moins fastidieux et donne l'impression d'avoir un rendement énorme par rapport à ce que nous produisions à l'ENSI ; c'est un outil très confortable. Je me sens personnellement rassuré vis-à-vis de l'IA : je me rends compte qu'à défaut de faire le travail à notre place, elle permet surtout un gain de temps et de productivité considérable, et j'ai le sentiment qu'elle permet d'accélérer plutôt que de juste remplacer.
+
+\end{document}
