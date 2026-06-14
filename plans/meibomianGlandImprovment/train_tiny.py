@@ -199,6 +199,7 @@ def main():
         num_classes=2,
         backbone="resnet50",
         pretrained=False,  # No pretrained for speed
+        output_stride=OUTPUT_STRIDE,
         device="cpu"
     )
     logger.info(f"Model created and moved to {device}\n")

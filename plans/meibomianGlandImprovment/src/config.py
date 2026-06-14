@@ -35,6 +35,10 @@ LEARNING_RATE = 1e-3
 EPOCHS = 100
 WEIGHT_DECAY = 1e-4
 NUM_WORKERS = 4
+EARLY_STOPPING_PATIENCE = 20
+LR_SCHEDULER_PATIENCE = 5
+LR_SCHEDULER_FACTOR = 0.5
+MIN_LR = 1e-6
 
 # Model architecture
 BACKBONE = "resnet50"  # DeepLabv3+ backbone: resnet50, resnet101, etc.
@@ -51,6 +55,8 @@ DICE_LOSS_WEIGHT = 1.0
 FOREGROUND_LOSS_WEIGHT = 10.0
 USE_EYELID_ROI = True
 ROI_MARGIN = 0.05
+USE_AUGMENTATION = True
+PREDICTION_SAMPLES = 12
 
 # Checkpoint and saving
 SAVE_INTERVAL = 5  # Save checkpoint every N epochs

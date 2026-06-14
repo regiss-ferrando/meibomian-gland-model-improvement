@@ -100,6 +100,7 @@ def check_model(logger):
             num_classes=2,
             backbone="resnet50",
             pretrained=False,  # No pretrained to speed up
+            output_stride=OUTPUT_STRIDE,
             device=device
         )
         

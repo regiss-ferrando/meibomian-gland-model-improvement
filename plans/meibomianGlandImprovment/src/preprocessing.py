@@ -144,6 +144,43 @@ class PreprocessingPipeline:
 
         return image[y1:y2, x1:x2], mask[y1:y2, x1:x2]
 
+    def augment_pair(self, image: np.ndarray, mask: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
+        """Apply light paired augmentations for meibography segmentation."""
+        if np.random.rand() < 0.5:
+            image = np.ascontiguousarray(np.fliplr(image))
+            mask = np.ascontiguousarray(np.fliplr(mask))
+
+        if np.random.rand() < 0.2:
+            image = np.ascontiguousarray(np.flipud(image))
+            mask = np.ascontiguousarray(np.flipud(mask))
+
+        if np.random.rand() < 0.7:
+            angle = float(np.random.uniform(-10.0, 10.0))
+            h, w = image.shape[:2]
+            matrix = cv2.getRotationMatrix2D((w / 2.0, h / 2.0), angle, 1.0)
+            image = cv2.warpAffine(
+                image,
+                matrix,
+                (w, h),
+                flags=cv2.INTER_LINEAR,
+                borderMode=cv2.BORDER_REFLECT_101,
+            )
+            mask = cv2.warpAffine(
+                mask,
+                matrix,
+                (w, h),
+                flags=cv2.INTER_NEAREST,
+                borderMode=cv2.BORDER_CONSTANT,
+                borderValue=0,
+            )
+
+        if np.random.rand() < 0.5:
+            alpha = float(np.random.uniform(0.85, 1.15))
+            beta = float(np.random.uniform(-10.0, 10.0))
+            image = np.clip(image.astype(np.float32) * alpha + beta, 0, 255).astype(np.uint8)
+
+        return image, mask
+
     def preprocess_mask(self, mask: np.ndarray) -> np.ndarray:
         """Run mask preprocessing and return class indices in {0, 1}."""
         mask = self.pad_to_square(mask, is_mask=True)

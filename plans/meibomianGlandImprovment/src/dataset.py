@@ -21,7 +21,8 @@ class MGD1kDataset(Dataset):
                  image_paths: Optional[List[Path]] = None,
                  mask_paths: Optional[List[Path]] = None,
                  crop_to_eyelid_roi: bool = True,
-                 roi_margin: float = 0.05):
+                 roi_margin: float = 0.05,
+                 augment: bool = False):
         """
         Initialize MGD-1k dataset
         
@@ -33,12 +34,14 @@ class MGD1kDataset(Dataset):
             mask_paths: Specific mask paths to use
             crop_to_eyelid_roi: Crop gland samples to the eyelid ROI before resizing
             roi_margin: Fractional margin added around the eyelid ROI crop
+            augment: Apply paired training augmentations
         """
         self.mgd1k_root = Path(mgd1k_root)
         self.mask_type = mask_type
         self.preprocessing = preprocessing or PreprocessingPipeline()
         self.crop_to_eyelid_roi = crop_to_eyelid_roi
         self.roi_margin = roi_margin
+        self.augment = augment
 
         if self.mask_type not in {"gland", "eyelid"}:
             raise ValueError(f"mask_type must be 'gland' or 'eyelid', got {mask_type!r}")
@@ -125,6 +128,9 @@ class MGD1kDataset(Dataset):
                 eyelid_mask,
                 margin_ratio=self.roi_margin,
             )
+
+        if self.augment:
+            image, mask = self.preprocessing.augment_pair(image, mask)
         
         # Preprocess
         image = self.preprocessing.preprocess(image)
@@ -160,7 +166,8 @@ class MGD1kDataModule:
                  num_workers: int = 4,
                  seed: int = 42,
                  crop_to_eyelid_roi: bool = True,
-                 roi_margin: float = 0.05):
+                 roi_margin: float = 0.05,
+                 augment: bool = True):
         """
         Initialize data module
         
@@ -174,6 +181,7 @@ class MGD1kDataModule:
             seed: Random seed for reproducibility
             crop_to_eyelid_roi: Crop gland samples to eyelid ROI before resizing
             roi_margin: Fractional margin added around the eyelid ROI crop
+            augment: Apply paired augmentations to the training split
         """
         self.mgd1k_root = mgd1k_root
         self.mask_type = mask_type
@@ -183,6 +191,7 @@ class MGD1kDataModule:
         self.pin_memory = torch.cuda.is_available()
         self.crop_to_eyelid_roi = crop_to_eyelid_roi
         self.roi_margin = roi_margin
+        self.augment = augment
 
         if not 0.0 < train_split < 1.0:
             raise ValueError(f"train_split must be between 0 and 1, got {train_split}")
@@ -207,7 +216,8 @@ class MGD1kDataModule:
             mask_type=mask_type,
             preprocessing=self.preprocessing,
             crop_to_eyelid_roi=crop_to_eyelid_roi,
-            roi_margin=roi_margin
+            roi_margin=roi_margin,
+            augment=False,
         )
         
         # Create splits
@@ -247,7 +257,8 @@ class MGD1kDataModule:
             image_paths=train_image_paths,
             mask_paths=train_mask_paths,
             crop_to_eyelid_roi=self.crop_to_eyelid_roi,
-            roi_margin=self.roi_margin
+            roi_margin=self.roi_margin,
+            augment=self.augment,
         )
         
         self.val_dataset = MGD1kDataset(
@@ -257,7 +268,8 @@ class MGD1kDataModule:
             image_paths=val_image_paths,
             mask_paths=val_mask_paths,
             crop_to_eyelid_roi=self.crop_to_eyelid_roi,
-            roi_margin=self.roi_margin
+            roi_margin=self.roi_margin,
+            augment=False,
         )
         
         self.test_dataset = MGD1kDataset(
@@ -267,7 +279,8 @@ class MGD1kDataModule:
             image_paths=test_image_paths,
             mask_paths=test_mask_paths,
             crop_to_eyelid_roi=self.crop_to_eyelid_roi,
-            roi_margin=self.roi_margin
+            roi_margin=self.roi_margin,
+            augment=False,
         )
         
         print(f"Train: {len(self.train_dataset)}, Val: {len(self.val_dataset)}, Test: {len(self.test_dataset)}")
