@@ -170,7 +170,7 @@ def check_loss(logger, logits, batch):
             ce_weight=CE_LOSS_WEIGHT,
             dice_weight=DICE_LOSS_WEIGHT,
             foreground_weight=FOREGROUND_LOSS_WEIGHT,
-        )
+        ).to(device)
         loss = criterion(logits, masks)
         
         logger.info("Loss calculation successful")
@@ -227,7 +227,7 @@ def check_backward_pass(logger, model, logits, batch):
             ce_weight=CE_LOSS_WEIGHT,
             dice_weight=DICE_LOSS_WEIGHT,
             foreground_weight=FOREGROUND_LOSS_WEIGHT,
-        )
+        ).to(device)
         loss = criterion(logits, masks)
         
         # Backward

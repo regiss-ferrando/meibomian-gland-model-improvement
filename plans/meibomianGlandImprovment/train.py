@@ -329,7 +329,7 @@ def main():
         ce_weight=args.ce_weight,
         dice_weight=args.dice_weight,
         foreground_weight=args.foreground_weight,
-    )
+    ).to(device)
     
     # Setup tensorboard
     writer = SummaryWriter(TENSORBOARD_DIR / run_id)
