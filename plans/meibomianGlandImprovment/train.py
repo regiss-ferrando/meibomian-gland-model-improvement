@@ -149,7 +149,7 @@ def evaluate(model: nn.Module,
             metrics['target_foreground'] += batch_metrics['target_foreground']
     
     # Average metrics
-    n_batches = len(val_loader)
+    n_batches = len(data_loader)
     for key in metrics:
         metrics[key] /= n_batches
     
