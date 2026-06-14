@@ -19,7 +19,9 @@ class MGD1kDataset(Dataset):
                  mask_type: str = "gland",  # "gland" or "eyelid"
                  preprocessing: Optional[PreprocessingPipeline] = None,
                  image_paths: Optional[List[Path]] = None,
-                 mask_paths: Optional[List[Path]] = None):
+                 mask_paths: Optional[List[Path]] = None,
+                 crop_to_eyelid_roi: bool = True,
+                 roi_margin: float = 0.05):
         """
         Initialize MGD-1k dataset
         
@@ -29,16 +31,25 @@ class MGD1kDataset(Dataset):
             preprocessing: PreprocessingPipeline instance
             image_paths: Specific image paths to use (if None, loads all)
             mask_paths: Specific mask paths to use
+            crop_to_eyelid_roi: Crop gland samples to the eyelid ROI before resizing
+            roi_margin: Fractional margin added around the eyelid ROI crop
         """
         self.mgd1k_root = Path(mgd1k_root)
         self.mask_type = mask_type
         self.preprocessing = preprocessing or PreprocessingPipeline()
+        self.crop_to_eyelid_roi = crop_to_eyelid_roi
+        self.roi_margin = roi_margin
 
         if self.mask_type not in {"gland", "eyelid"}:
             raise ValueError(f"mask_type must be 'gland' or 'eyelid', got {mask_type!r}")
         
         # Define paths
         self.images_dir = self.mgd1k_root / "Original Images"
+        eyelid_options = [
+            self.mgd1k_root / "Eyelid Lebels" / "Eyelid Lebels",
+            self.mgd1k_root / "Eyelid Lebels",
+        ]
+        self.eyelid_dir = next((p for p in eyelid_options if p.exists()), eyelid_options[0])
         
         # Try to find masks directory (handle both nested and flat structures)
         if mask_type == "gland":
@@ -48,10 +59,6 @@ class MGD1kDataset(Dataset):
             ]
             self.masks_dir = next((p for p in gland_options if p.exists()), gland_options[0])
         else:  # eyelid
-            eyelid_options = [
-                self.mgd1k_root / "Eyelid Lebels" / "Eyelid Lebels",
-                self.mgd1k_root / "Eyelid Lebels",
-            ]
             self.masks_dir = next((p for p in eyelid_options if p.exists()), eyelid_options[0])
         
         # Load image and mask pairs
@@ -109,6 +116,15 @@ class MGD1kDataset(Dataset):
         # Load images
         image = self.preprocessing.load_image(image_path)
         mask = self.preprocessing.load_mask(mask_path)
+
+        if self.crop_to_eyelid_roi and self.mask_type == "gland":
+            eyelid_mask = self.preprocessing.load_mask(self._find_eyelid_mask(image_path))
+            image, mask = self.preprocessing.crop_to_mask_bbox(
+                image,
+                mask,
+                eyelid_mask,
+                margin_ratio=self.roi_margin,
+            )
         
         # Preprocess
         image = self.preprocessing.preprocess(image)
@@ -125,6 +141,12 @@ class MGD1kDataset(Dataset):
             'mask_path': str(mask_path)
         }
 
+    def _find_eyelid_mask(self, image_path: Path) -> Path:
+        candidates = sorted(self.eyelid_dir.glob(f"{image_path.stem}*"))
+        if not candidates:
+            raise FileNotFoundError(f"Eyelid ROI mask not found for image: {image_path}")
+        return candidates[0]
+
 
 class MGD1kDataModule:
     """Data module for managing train/val/test splits"""
@@ -136,7 +158,9 @@ class MGD1kDataModule:
                  train_split: float = 0.7,
                  val_split: float = 0.15,
                  num_workers: int = 4,
-                 seed: int = 42):
+                 seed: int = 42,
+                 crop_to_eyelid_roi: bool = True,
+                 roi_margin: float = 0.05):
         """
         Initialize data module
         
@@ -148,6 +172,8 @@ class MGD1kDataModule:
             val_split: Fraction for validation
             num_workers: Number of workers for dataloader
             seed: Random seed for reproducibility
+            crop_to_eyelid_roi: Crop gland samples to eyelid ROI before resizing
+            roi_margin: Fractional margin added around the eyelid ROI crop
         """
         self.mgd1k_root = mgd1k_root
         self.mask_type = mask_type
@@ -155,6 +181,8 @@ class MGD1kDataModule:
         self.num_workers = num_workers
         self.seed = seed
         self.pin_memory = torch.cuda.is_available()
+        self.crop_to_eyelid_roi = crop_to_eyelid_roi
+        self.roi_margin = roi_margin
 
         if not 0.0 < train_split < 1.0:
             raise ValueError(f"train_split must be between 0 and 1, got {train_split}")
@@ -177,7 +205,9 @@ class MGD1kDataModule:
         self.full_dataset = MGD1kDataset(
             mgd1k_root=mgd1k_root,
             mask_type=mask_type,
-            preprocessing=self.preprocessing
+            preprocessing=self.preprocessing,
+            crop_to_eyelid_roi=crop_to_eyelid_roi,
+            roi_margin=roi_margin
         )
         
         # Create splits
@@ -215,7 +245,9 @@ class MGD1kDataModule:
             mask_type=self.mask_type,
             preprocessing=self.preprocessing,
             image_paths=train_image_paths,
-            mask_paths=train_mask_paths
+            mask_paths=train_mask_paths,
+            crop_to_eyelid_roi=self.crop_to_eyelid_roi,
+            roi_margin=self.roi_margin
         )
         
         self.val_dataset = MGD1kDataset(
@@ -223,7 +255,9 @@ class MGD1kDataModule:
             mask_type=self.mask_type,
             preprocessing=self.preprocessing,
             image_paths=val_image_paths,
-            mask_paths=val_mask_paths
+            mask_paths=val_mask_paths,
+            crop_to_eyelid_roi=self.crop_to_eyelid_roi,
+            roi_margin=self.roi_margin
         )
         
         self.test_dataset = MGD1kDataset(
@@ -231,7 +265,9 @@ class MGD1kDataModule:
             mask_type=self.mask_type,
             preprocessing=self.preprocessing,
             image_paths=test_image_paths,
-            mask_paths=test_mask_paths
+            mask_paths=test_mask_paths,
+            crop_to_eyelid_roi=self.crop_to_eyelid_roi,
+            roi_margin=self.roi_margin
         )
         
         print(f"Train: {len(self.train_dataset)}, Val: {len(self.val_dataset)}, Test: {len(self.test_dataset)}")

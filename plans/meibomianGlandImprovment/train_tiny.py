@@ -167,7 +167,9 @@ def main():
         mgd1k_root=args.mgd1k_root,
         mask_type="gland",
         batch_size=args.batch_size,
-        num_workers=0
+        num_workers=0,
+        crop_to_eyelid_roi=USE_EYELID_ROI,
+        roi_margin=ROI_MARGIN,
     )
     
     # Create small subsets for testing
@@ -203,7 +205,11 @@ def main():
     
     # Setup optimizer and loss
     optimizer = optim.Adam(model.parameters(), lr=args.lr, weight_decay=WEIGHT_DECAY)
-    criterion = CombinedLoss(ce_weight=CE_LOSS_WEIGHT, dice_weight=DICE_LOSS_WEIGHT)
+    criterion = CombinedLoss(
+        ce_weight=CE_LOSS_WEIGHT,
+        dice_weight=DICE_LOSS_WEIGHT,
+        foreground_weight=FOREGROUND_LOSS_WEIGHT,
+    )
     
     # Training loop
     logger.info(f"Starting training for {args.epochs} epochs...\n")

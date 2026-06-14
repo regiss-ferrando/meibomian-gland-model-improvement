@@ -36,7 +36,9 @@ def check_dataset(logger):
             mgd1k_root=str(mgd1k_root),
             mask_type="gland",
             batch_size=4,
-            num_workers=0  # CPU only
+            num_workers=0,  # CPU only
+            crop_to_eyelid_roi=USE_EYELID_ROI,
+            roi_margin=ROI_MARGIN,
         )
         
         logger.info("Dataset loaded successfully")
@@ -163,7 +165,11 @@ def check_loss(logger, logits, batch):
         device = logits.device
         masks = batch['mask'].to(device)
         
-        criterion = CombinedLoss(ce_weight=CE_LOSS_WEIGHT, dice_weight=DICE_LOSS_WEIGHT)
+        criterion = CombinedLoss(
+            ce_weight=CE_LOSS_WEIGHT,
+            dice_weight=DICE_LOSS_WEIGHT,
+            foreground_weight=FOREGROUND_LOSS_WEIGHT,
+        )
         loss = criterion(logits, masks)
         
         logger.info("Loss calculation successful")
@@ -216,7 +222,11 @@ def check_backward_pass(logger, model, logits, batch):
         device = logits.device
         masks = batch['mask'].to(device)
         
-        criterion = CombinedLoss(ce_weight=CE_LOSS_WEIGHT, dice_weight=DICE_LOSS_WEIGHT)
+        criterion = CombinedLoss(
+            ce_weight=CE_LOSS_WEIGHT,
+            dice_weight=DICE_LOSS_WEIGHT,
+            foreground_weight=FOREGROUND_LOSS_WEIGHT,
+        )
         loss = criterion(logits, masks)
         
         # Backward

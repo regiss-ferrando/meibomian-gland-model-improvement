@@ -208,6 +208,7 @@ class SegmentationMetrics:
         """
         Compute all metrics.
         """
+        preds = SegmentationMetrics._get_predictions(logits)
 
         return {
             "soft_dice":
@@ -240,4 +241,10 @@ class SegmentationMetrics:
                     targets,
                     num_classes=num_classes
                 ),
+
+            "pred_foreground":
+                (preds == 1).float().mean().item(),
+
+            "target_foreground":
+                (targets == 1).float().mean().item(),
         }

@@ -115,6 +115,35 @@ class PreprocessingPipeline:
 
         return image.astype(np.float32)
 
+    def crop_to_mask_bbox(
+        self,
+        image: np.ndarray,
+        mask: np.ndarray,
+        roi_mask: np.ndarray,
+        margin_ratio: float = 0.05,
+    ) -> Tuple[np.ndarray, np.ndarray]:
+        """Crop image and target mask to the bounding box of a binary ROI mask."""
+        if image.shape[:2] != mask.shape[:2] or image.shape[:2] != roi_mask.shape[:2]:
+            raise ValueError(
+                "Image, mask, and ROI mask must have matching spatial dimensions: "
+                f"image={image.shape}, mask={mask.shape}, roi_mask={roi_mask.shape}"
+            )
+
+        ys, xs = np.where(roi_mask > 127)
+        if len(xs) == 0 or len(ys) == 0:
+            return image, mask
+
+        x1, x2 = xs.min(), xs.max() + 1
+        y1, y2 = ys.min(), ys.max() + 1
+
+        margin = int(round(max(x2 - x1, y2 - y1) * margin_ratio))
+        x1 = max(0, x1 - margin)
+        y1 = max(0, y1 - margin)
+        x2 = min(image.shape[1], x2 + margin)
+        y2 = min(image.shape[0], y2 + margin)
+
+        return image[y1:y2, x1:x2], mask[y1:y2, x1:x2]
+
     def preprocess_mask(self, mask: np.ndarray) -> np.ndarray:
         """Run mask preprocessing and return class indices in {0, 1}."""
         mask = self.pad_to_square(mask, is_mask=True)

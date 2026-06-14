@@ -46,7 +46,14 @@ def train_epoch(model: nn.Module,
                 logger: logging.Logger) -> dict:
     """Train for one epoch"""
     model.train()
-    metrics = {'loss': 0.0, 'dice': 0.0, 'iou': 0.0, 'pixel_acc': 0.0}
+    metrics = {
+        'loss': 0.0,
+        'dice': 0.0,
+        'iou': 0.0,
+        'pixel_acc': 0.0,
+        'pred_foreground': 0.0,
+        'target_foreground': 0.0,
+    }
     
     for batch_idx, batch in enumerate(train_loader):
         images = batch['image'].to(device)
@@ -77,13 +84,17 @@ def train_epoch(model: nn.Module,
         metrics['dice'] += batch_metrics['dice']
         metrics['iou'] += batch_metrics['iou']
         metrics['pixel_acc'] += batch_metrics['pixel_accuracy']
+        metrics['pred_foreground'] += batch_metrics['pred_foreground']
+        metrics['target_foreground'] += batch_metrics['target_foreground']
         
         if (batch_idx + 1) % 10 == 0:
             logger.info(
                 f"Batch [{batch_idx+1}/{len(train_loader)}] "
                 f"Loss: {loss.item():.4f} "
                 f"Dice: {batch_metrics['dice']:.4f} "
-                f"IoU: {batch_metrics['iou']:.4f}"
+                f"IoU: {batch_metrics['iou']:.4f} "
+                f"PredFG: {batch_metrics['pred_foreground']:.4f} "
+                f"TargetFG: {batch_metrics['target_foreground']:.4f}"
             )
     
     # Average metrics
@@ -100,7 +111,15 @@ def validate(model: nn.Module,
              device: str) -> dict:
     """Validate the model"""
     model.eval()
-    metrics = {'loss': 0.0, 'dice': 0.0, 'iou': 0.0, 'pixel_acc': 0.0, 'mean_iou': 0.0}
+    metrics = {
+        'loss': 0.0,
+        'dice': 0.0,
+        'iou': 0.0,
+        'pixel_acc': 0.0,
+        'mean_iou': 0.0,
+        'pred_foreground': 0.0,
+        'target_foreground': 0.0,
+    }
     
     with torch.no_grad():
         for batch in val_loader:
@@ -127,6 +146,8 @@ def validate(model: nn.Module,
             metrics['iou'] += batch_metrics['iou']
             metrics['pixel_acc'] += batch_metrics['pixel_accuracy']
             metrics['mean_iou'] += batch_metrics['mean_iou']
+            metrics['pred_foreground'] += batch_metrics['pred_foreground']
+            metrics['target_foreground'] += batch_metrics['target_foreground']
     
     # Average metrics
     n_batches = len(val_loader)
@@ -180,6 +201,12 @@ def main():
                        help='Cross-entropy weight in the combined loss')
     parser.add_argument('--dice-weight', type=float, default=DICE_LOSS_WEIGHT,
                        help='Dice weight in the combined loss')
+    parser.add_argument('--foreground-weight', type=float, default=FOREGROUND_LOSS_WEIGHT,
+                       help='Foreground class weight for cross-entropy')
+    parser.add_argument('--no-eyelid-roi', action='store_true',
+                       help='Disable eyelid ROI cropping for gland segmentation')
+    parser.add_argument('--roi-margin', type=float, default=ROI_MARGIN,
+                       help='Fractional margin around the eyelid ROI crop')
     
     args = parser.parse_args()
     
@@ -197,7 +224,9 @@ def main():
         mgd1k_root=args.mgd1k_root,
         mask_type=args.mask_type,
         batch_size=args.batch_size,
-        num_workers=args.num_workers
+        num_workers=args.num_workers,
+        crop_to_eyelid_roi=not args.no_eyelid_roi,
+        roi_margin=args.roi_margin,
     )
     
     train_loader = data_module.get_train_loader()
@@ -216,7 +245,11 @@ def main():
     
     # Setup optimizer and loss
     optimizer = optim.Adam(model.parameters(), lr=args.lr, weight_decay=WEIGHT_DECAY)
-    criterion = CombinedLoss(ce_weight=args.ce_weight, dice_weight=args.dice_weight)
+    criterion = CombinedLoss(
+        ce_weight=args.ce_weight,
+        dice_weight=args.dice_weight,
+        foreground_weight=args.foreground_weight,
+    )
     
     # Setup tensorboard
     writer = SummaryWriter(TENSORBOARD_DIR / datetime.now().strftime('%Y%m%d_%H%M%S'))
@@ -231,12 +264,15 @@ def main():
         # Train
         train_metrics = train_epoch(model, train_loader, optimizer, criterion, str(device), logger)
         logger.info(f"Train - Loss: {train_metrics['loss']:.4f}, Dice: {train_metrics['dice']:.4f}, "
-                   f"IoU: {train_metrics['iou']:.4f}")
+                   f"IoU: {train_metrics['iou']:.4f}, PredFG: {train_metrics['pred_foreground']:.4f}, "
+                   f"TargetFG: {train_metrics['target_foreground']:.4f}")
         
         # Validate
         val_metrics = validate(model, val_loader, criterion, str(device))
         logger.info(f"Val - Loss: {val_metrics['loss']:.4f}, Dice: {val_metrics['dice']:.4f}, "
-                   f"IoU: {val_metrics['iou']:.4f}, Mean IoU: {val_metrics['mean_iou']:.4f}")
+                   f"IoU: {val_metrics['iou']:.4f}, Mean IoU: {val_metrics['mean_iou']:.4f}, "
+                   f"PredFG: {val_metrics['pred_foreground']:.4f}, "
+                   f"TargetFG: {val_metrics['target_foreground']:.4f}")
         
         # Log to tensorboard
         for key, value in train_metrics.items():

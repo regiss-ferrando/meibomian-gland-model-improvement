@@ -5,6 +5,7 @@ Loss functions for binary meibomian gland segmentation.
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from typing import Optional
 
 
 def _validate_binary_segmentation_inputs(
@@ -52,19 +53,24 @@ class CombinedLoss(nn.Module):
         self,
         ce_weight: float = 1.0,
         dice_weight: float = 1.0,
+        foreground_weight: Optional[float] = None,
         smooth: float = 1e-5,
     ):
         super().__init__()
         self.ce_weight = ce_weight
         self.dice_weight = dice_weight
-        self.ce_loss = nn.CrossEntropyLoss()
+        if foreground_weight is None:
+            ce_class_weights = None
+        else:
+            ce_class_weights = torch.tensor([1.0, foreground_weight], dtype=torch.float32)
+        self.register_buffer("ce_class_weights", ce_class_weights)
         self.dice_loss = DiceLoss(smooth=smooth)
 
     def forward(self, logits: torch.Tensor, targets: torch.Tensor) -> torch.Tensor:
         _validate_binary_segmentation_inputs(logits, targets)
         targets = targets.long()
 
-        ce = self.ce_loss(logits, targets)
+        ce = F.cross_entropy(logits, targets, weight=self.ce_class_weights)
         dice = self.dice_loss(logits, targets)
 
         return self.ce_weight * ce + self.dice_weight * dice

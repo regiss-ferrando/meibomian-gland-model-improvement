@@ -48,6 +48,9 @@ DEVICE = "cuda"  # "cuda" or "cpu"
 SEGMENTATION_WEIGHT = 1.0
 CE_LOSS_WEIGHT = 1.0
 DICE_LOSS_WEIGHT = 1.0
+FOREGROUND_LOSS_WEIGHT = 10.0
+USE_EYELID_ROI = True
+ROI_MARGIN = 0.05
 
 # Checkpoint and saving
 SAVE_INTERVAL = 5  # Save checkpoint every N epochs
