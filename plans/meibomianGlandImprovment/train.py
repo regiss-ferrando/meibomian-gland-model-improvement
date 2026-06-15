@@ -390,9 +390,10 @@ def main():
             best_val_iou = val_metrics['iou']
             best_epoch = epoch + 1
             epochs_without_improvement = 0
-            best_path = CHECKPOINT_DIR / "best_model.pt"
+            best_path = CHECKPOINT_DIR / f"best_model_{args.mask_type}_{run_id}.pt"
             torch.save(model.state_dict(), best_path)
-            logger.info(f"Best model saved with IoU: {best_val_iou:.4f}")
+            torch.save(model.state_dict(), CHECKPOINT_DIR / "best_model.pt")
+            logger.info(f"Best model saved with IoU: {best_val_iou:.4f} at {best_path}")
         else:
             epochs_without_improvement += 1
 
@@ -406,7 +407,7 @@ def main():
             )
             break
     
-    best_path = CHECKPOINT_DIR / "best_model.pt"
+    best_path = CHECKPOINT_DIR / f"best_model_{args.mask_type}_{run_id}.pt"
     if best_path.exists():
         model.load_state_dict(torch.load(best_path, map_location=device))
         logger.info(f"Loaded best model from epoch {best_epoch} for final evaluation")
