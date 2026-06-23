@@ -1,6 +1,6 @@
-# Blink Improvement Plan: MGD-1k Strategy
+# MGD-1k Meibomian Gland Segmentation
 
-This folder contains the structured plan for improving MGD-1k results.
+This folder contains the training and evaluation pipeline for improving MGD-1k meibomian gland segmentation.
 
 ## Purpose
 - Organize dataset audit, experiment tracking, model checkpoints, and results.
@@ -15,3 +15,27 @@ This folder contains the structured plan for improving MGD-1k results.
 - `docs/`: detailed notes, dataset audit, and strategy refinements.
 - `reports/`: weekly updates, summaries, and progress notes.
 - `logs/`: training logs and experiment outputs.
+
+## Reproducible Runs
+
+The current baseline behavior is preserved by default. Negative learning is only enabled when `--negative-weight` is greater than `0`.
+
+Baseline gland run:
+
+```bash
+python plans/meibomianGlandImprovment/train.py --mgd1k-root "/path/to/mgd1k-official/Expore MGD1k Dataset" --mask-type gland --device cuda --batch-size 8 --epochs 50 --foreground-weight 5
+```
+
+Hard-negative learning run:
+
+```bash
+python plans/meibomianGlandImprovment/train.py --mgd1k-root "/path/to/mgd1k-official/Expore MGD1k Dataset" --mask-type gland --device cuda --batch-size 8 --epochs 50 --foreground-weight 5 --negative-weight 0.2 --hard-negative-percent 0.1 --hard-negative-min-prob 0.3
+```
+
+Suggested first sweep:
+
+- `--negative-weight 0.1`
+- `--negative-weight 0.2`
+- `--negative-weight 0.5`
+
+Keep the same split, foreground weight, and epoch count when comparing with baseline runs.

@@ -47,13 +47,16 @@ class DiceLoss(nn.Module):
 
 
 class CombinedLoss(nn.Module):
-    """Cross-entropy plus foreground Dice loss."""
+    """Cross-entropy plus foreground Dice loss, with optional hard-negative learning."""
 
     def __init__(
         self,
         ce_weight: float = 1.0,
         dice_weight: float = 1.0,
         foreground_weight: Optional[float] = None,
+        negative_weight: float = 0.0,
+        hard_negative_percent: float = 0.1,
+        hard_negative_min_prob: float = 0.0,
         smooth: float = 1e-5,
     ):
         super().__init__()
@@ -65,6 +68,11 @@ class CombinedLoss(nn.Module):
             ce_class_weights = torch.tensor([1.0, foreground_weight], dtype=torch.float32)
         self.register_buffer("ce_class_weights", ce_class_weights)
         self.dice_loss = DiceLoss(smooth=smooth)
+        self.negative_weight = negative_weight
+        self.negative_loss = HardNegativeLoss(
+            hard_negative_percent=hard_negative_percent,
+            min_foreground_prob=hard_negative_min_prob,
+        )
 
     def forward(self, logits: torch.Tensor, targets: torch.Tensor) -> torch.Tensor:
         _validate_binary_segmentation_inputs(logits, targets)
@@ -72,8 +80,61 @@ class CombinedLoss(nn.Module):
 
         ce = F.cross_entropy(logits, targets, weight=self.ce_class_weights)
         dice = self.dice_loss(logits, targets)
+        loss = self.ce_weight * ce + self.dice_weight * dice
 
-        return self.ce_weight * ce + self.dice_weight * dice
+        if self.negative_weight > 0:
+            loss = loss + self.negative_weight * self.negative_loss(logits, targets)
+
+        return loss
+
+
+class HardNegativeLoss(nn.Module):
+    """Penalize confident foreground predictions on background pixels.
+
+    This is useful when the model creates persistent false-positive gland blobs.
+    It keeps ordinary supervised learning intact, then adds a targeted penalty on
+    the background pixels where foreground probability is highest.
+    """
+
+    def __init__(
+        self,
+        hard_negative_percent: float = 0.1,
+        min_foreground_prob: float = 0.0,
+        eps: float = 1e-6,
+    ):
+        super().__init__()
+        if hard_negative_percent <= 0 or hard_negative_percent > 1:
+            raise ValueError(
+                "hard_negative_percent must be in (0, 1], "
+                f"got {hard_negative_percent}"
+            )
+        if min_foreground_prob < 0 or min_foreground_prob >= 1:
+            raise ValueError(
+                "min_foreground_prob must be in [0, 1), "
+                f"got {min_foreground_prob}"
+            )
+        self.hard_negative_percent = hard_negative_percent
+        self.min_foreground_prob = min_foreground_prob
+        self.eps = eps
+
+    def forward(self, logits: torch.Tensor, targets: torch.Tensor) -> torch.Tensor:
+        _validate_binary_segmentation_inputs(logits, targets)
+
+        foreground_probs = F.softmax(logits, dim=1)[:, 1]
+        background_probs = foreground_probs[targets.long() == 0]
+        if background_probs.numel() == 0:
+            return logits.new_tensor(0.0)
+
+        if self.min_foreground_prob > 0:
+            background_probs = background_probs[background_probs >= self.min_foreground_prob]
+            if background_probs.numel() == 0:
+                return logits.new_tensor(0.0)
+
+        n_hard = max(1, int(background_probs.numel() * self.hard_negative_percent))
+        hard_probs = torch.topk(background_probs, k=n_hard, largest=True).values
+        hard_probs = hard_probs.clamp(min=self.eps, max=1.0 - self.eps)
+
+        return -torch.log1p(-hard_probs).mean()
 
 
 class FocalLoss(nn.Module):

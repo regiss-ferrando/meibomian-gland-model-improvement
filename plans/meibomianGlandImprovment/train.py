@@ -258,6 +258,12 @@ def main():
                        help='Dice weight in the combined loss')
     parser.add_argument('--foreground-weight', type=float, default=FOREGROUND_LOSS_WEIGHT,
                        help='Foreground class weight for cross-entropy')
+    parser.add_argument('--negative-weight', type=float, default=0.0,
+                       help='Weight for hard-negative learning on background pixels')
+    parser.add_argument('--hard-negative-percent', type=float, default=0.1,
+                       help='Fraction of hardest background pixels used by hard-negative loss')
+    parser.add_argument('--hard-negative-min-prob', type=float, default=0.0,
+                       help='Only penalize background pixels with foreground probability above this value')
     parser.add_argument('--no-eyelid-roi', action='store_true',
                        help='Disable eyelid ROI cropping for gland segmentation')
     parser.add_argument('--roi-margin', type=float, default=ROI_MARGIN,
@@ -329,6 +335,9 @@ def main():
         ce_weight=args.ce_weight,
         dice_weight=args.dice_weight,
         foreground_weight=args.foreground_weight,
+        negative_weight=args.negative_weight,
+        hard_negative_percent=args.hard_negative_percent,
+        hard_negative_min_prob=args.hard_negative_min_prob,
     ).to(device)
     
     # Setup tensorboard
