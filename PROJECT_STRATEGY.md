@@ -2,7 +2,7 @@
 
 ## Objective
 
-Focus on the dataset linked in `plans/blink_improvement/For Regiss - dataset exploitable`:
+Focus on the MGD-1k dataset used in `plans/meibomianGlandImprovment/`:
 - MGD-1k: 1,000 infrared meibomian gland images with segmentation masks and graded meiboscore.
 
 The goal is to define a reproducible research and modeling pipeline that improves performance on this dataset and creates a path for broader dry eye-related ocular imaging applications.
@@ -145,8 +145,8 @@ The goal is to define a reproducible research and modeling pipeline that improve
 ## 7. Workflow and documentation
 
 ### Reproducible workflow
-- Store data processing scripts in `scripts/`.
-- Keep dataset research and results notes in `plans/blink_improvement/`.
+- Store general data processing scripts in `scripts/`.
+- Keep MGD-1k training, evaluation, and result notes in `plans/meibomianGlandImprovment/`.
 - Maintain summaries and methodology in `docs/`.
 - Use `reports/weekly/` for progress updates and results presentation.
 
@@ -157,12 +157,12 @@ The goal is to define a reproducible research and modeling pipeline that improve
 
 ## 8. Immediate next actions
 
-1. Open `plans/blink_improvement/For Regiss - dataset exploitable` and confirm the exact MGD-1k dataset structure.
-2. Create a data inventory script in `scripts/` for the dataset contents.
-3. Prototype a baseline segmentation model using U-Net or nnU-Net.
-4. Track improvements using a consistent validation protocol.
+1. Add a negative-learning experiment to reduce persistent false positives.
+2. Evaluate a SAM or medical-SAM baseline as a separate benchmark.
+3. Run the existing two-stage eyelid ROI + gland pipeline and compare against gland-only training.
+4. Track Dice, IoU, foreground ratio, MG ratio, and visual failure cases with a consistent validation protocol.
 
 ## Notes
 
-- The current workspace now has a dedicated plan location: `plans/blink_improvement/`.
+- The current workspace now has a dedicated plan location: `plans/meibomianGlandImprovment/`.
 - The dataset improvement strategy should be executed in a reproducible, documented pipeline so progress can be measured clearly.

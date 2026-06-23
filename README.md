@@ -18,16 +18,16 @@ This workspace has been reorganized to separate research, data, code, reports, a
   - `images/`: visual assets.
   - `unknown/`: nonstandard or incomplete downloads.
 - `plans/`
-  - `blink_improvement/`: dataset-targeted analysis and improvement notes.
+  - `meibomianGlandImprovment/`: MGD-1k segmentation code, results, and experiment notes.
 - `.venv/`
   - Python virtual environment (unchanged).
 
 ## Primary goal
 
-The current strategic focus is on improving results for the dataset described in `plans/blink_improvement/For Regiss - dataset exploitable`.
+The current strategic focus is improving meibomian gland segmentation on MGD-1k in `plans/meibomianGlandImprovment/`.
 
 ## Next steps
 
-1. Review the MGD-1k dataset notes in `plans/blink_improvement/For Regiss - dataset exploitable`.
-2. Follow the strategy in `PROJECT_STRATEGY.md`.
-3. Use `scripts/` for reproducible data processing and evaluation.
+1. Use `plans/meibomianGlandImprovment/train.py` for gland or eyelid training.
+2. Use `plans/meibomianGlandImprovment/evaluate_dual_pipeline.py` for the eyelid ROI + gland pipeline.
+3. Keep local datasets, server outputs, and presentation assets out of Git.

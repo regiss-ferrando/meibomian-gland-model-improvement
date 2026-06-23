@@ -69,6 +69,23 @@ plans/meibomianGlandImprovment/models/checkpoints/*.onnx
 plans/meibomianGlandImprovment/results/**/*.png
 plans/meibomianGlandImprovment/results/**/*.jpg
 plans/meibomianGlandImprovment/logs/*.log
+plans/meibomianGlandImprovment/server_results/
+
+# Local datasets and reference dumps
+mgd1k-official/
+deeplab_reference/
+ensemble_reference/
+plans/meibomianGlandImprovment/data/**
+!plans/meibomianGlandImprovment/data/
+!plans/meibomianGlandImprovment/data/**/
+!plans/meibomianGlandImprovment/data/**/.gitkeep
+plans/meibomianGlandImprovment/explore_dataset.ipynb
+
+# Local presentation/video/report artifacts
+resources/presentations/*.mp4
+resources/presentations/*.pptx
+resources/presentations/*.pdf
+reports/weekly/Rapport_M_Lebret_2.*
 
 # OS-specific
 Thumbs.db
