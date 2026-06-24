@@ -64,6 +64,7 @@ plans/meibomianGlandImprovment/data/external/*
 plans/meibomianGlandImprovment/models/checkpoints/*.pth
 plans/meibomianGlandImprovment/models/checkpoints/*.pt
 plans/meibomianGlandImprovment/models/checkpoints/*.onnx
+plans/meibomianGlandImprovment/models/sam/*.pth
 
 # Results and logs
 plans/meibomianGlandImprovment/results/**/*.png
