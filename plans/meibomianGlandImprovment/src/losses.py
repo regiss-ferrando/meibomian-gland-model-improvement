@@ -47,7 +47,7 @@ class DiceLoss(nn.Module):
 
 
 class CombinedLoss(nn.Module):
-    """Cross-entropy plus foreground Dice loss, with optional hard-negative learning."""
+    """Cross-entropy plus Dice, with optional hard-negative and centerline losses."""
 
     def __init__(
         self,
@@ -57,6 +57,8 @@ class CombinedLoss(nn.Module):
         negative_weight: float = 0.0,
         hard_negative_percent: float = 0.1,
         hard_negative_min_prob: float = 0.0,
+        cldice_weight: float = 0.0,
+        cldice_iterations: int = 10,
         smooth: float = 1e-5,
     ):
         super().__init__()
@@ -73,6 +75,8 @@ class CombinedLoss(nn.Module):
             hard_negative_percent=hard_negative_percent,
             min_foreground_prob=hard_negative_min_prob,
         )
+        self.cldice_weight = cldice_weight
+        self.cldice_loss = SoftClDiceLoss(iterations=cldice_iterations, smooth=smooth)
 
     def forward(self, logits: torch.Tensor, targets: torch.Tensor) -> torch.Tensor:
         _validate_binary_segmentation_inputs(logits, targets)
@@ -84,6 +88,9 @@ class CombinedLoss(nn.Module):
 
         if self.negative_weight > 0:
             loss = loss + self.negative_weight * self.negative_loss(logits, targets)
+
+        if self.cldice_weight > 0:
+            loss = loss + self.cldice_weight * self.cldice_loss(logits, targets)
 
         return loss
 
@@ -135,6 +142,69 @@ class HardNegativeLoss(nn.Module):
         hard_probs = hard_probs.clamp(min=self.eps, max=1.0 - self.eps)
 
         return -torch.log1p(-hard_probs).mean()
+
+
+class SoftClDiceLoss(nn.Module):
+    """Soft centerline Dice loss for thin, tubular segmentation targets.
+
+    The loss compares differentiable skeletons of the predicted foreground and
+    target mask. It encourages thin structures to stay connected and discourages
+    turning long glands into thick blobs.
+    """
+
+    def __init__(self, iterations: int = 10, smooth: float = 1e-5):
+        super().__init__()
+        if iterations < 1:
+            raise ValueError(f"iterations must be >= 1, got {iterations}")
+        self.iterations = iterations
+        self.smooth = smooth
+
+    @staticmethod
+    def _soft_erode(mask: torch.Tensor) -> torch.Tensor:
+        vertical = -F.max_pool2d(-mask, kernel_size=(3, 1), stride=1, padding=(1, 0))
+        horizontal = -F.max_pool2d(-mask, kernel_size=(1, 3), stride=1, padding=(0, 1))
+        return torch.minimum(vertical, horizontal)
+
+    @staticmethod
+    def _soft_dilate(mask: torch.Tensor) -> torch.Tensor:
+        return F.max_pool2d(mask, kernel_size=3, stride=1, padding=1)
+
+    def _soft_open(self, mask: torch.Tensor) -> torch.Tensor:
+        return self._soft_dilate(self._soft_erode(mask))
+
+    def _soft_skeletonize(self, mask: torch.Tensor) -> torch.Tensor:
+        opened = self._soft_open(mask)
+        skeleton = F.relu(mask - opened)
+
+        eroded = mask
+        for _ in range(self.iterations):
+            eroded = self._soft_erode(eroded)
+            opened = self._soft_open(eroded)
+            delta = F.relu(eroded - opened)
+            skeleton = skeleton + F.relu(delta - skeleton * delta)
+
+        return skeleton
+
+    def forward(self, logits: torch.Tensor, targets: torch.Tensor) -> torch.Tensor:
+        _validate_binary_segmentation_inputs(logits, targets)
+
+        probs = F.softmax(logits, dim=1)[:, 1:2]
+        targets = targets.float().unsqueeze(1)
+
+        pred_skeleton = self._soft_skeletonize(probs)
+        target_skeleton = self._soft_skeletonize(targets)
+
+        topology_precision = (pred_skeleton * targets).sum() / (
+            pred_skeleton.sum() + self.smooth
+        )
+        topology_sensitivity = (target_skeleton * probs).sum() / (
+            target_skeleton.sum() + self.smooth
+        )
+        cldice = (2.0 * topology_precision * topology_sensitivity + self.smooth) / (
+            topology_precision + topology_sensitivity + self.smooth
+        )
+
+        return 1.0 - cldice
 
 
 class FocalLoss(nn.Module):

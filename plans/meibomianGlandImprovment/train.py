@@ -264,6 +264,10 @@ def main():
                        help='Fraction of hardest background pixels used by hard-negative loss')
     parser.add_argument('--hard-negative-min-prob', type=float, default=0.0,
                        help='Only penalize background pixels with foreground probability above this value')
+    parser.add_argument('--cldice-weight', type=float, default=0.0,
+                       help='Weight for soft centerline Dice loss on thin gland structures')
+    parser.add_argument('--cldice-iterations', type=int, default=10,
+                       help='Soft skeletonization iterations used by clDice')
     parser.add_argument('--no-eyelid-roi', action='store_true',
                        help='Disable eyelid ROI cropping for gland segmentation')
     parser.add_argument('--roi-margin', type=float, default=ROI_MARGIN,
@@ -338,6 +342,8 @@ def main():
         negative_weight=args.negative_weight,
         hard_negative_percent=args.hard_negative_percent,
         hard_negative_min_prob=args.hard_negative_min_prob,
+        cldice_weight=args.cldice_weight,
+        cldice_iterations=args.cldice_iterations,
     ).to(device)
     
     # Setup tensorboard

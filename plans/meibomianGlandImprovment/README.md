@@ -39,3 +39,17 @@ Suggested first sweep:
 - `--negative-weight 0.5`
 
 Keep the same split, foreground weight, and epoch count when comparing with baseline runs.
+
+Structure-aware clDice run:
+
+```bash
+python plans/meibomianGlandImprovment/train.py --mgd1k-root "/path/to/mgd1k-official/Expore MGD1k Dataset" --mask-type gland --device cuda --batch-size 8 --epochs 50 --foreground-weight 5 --cldice-weight 0.1
+```
+
+Suggested first clDice sweep:
+
+- `--cldice-weight 0.05`
+- `--cldice-weight 0.1`
+- `--cldice-weight 0.2`
+
+Start without `--negative-weight` so the effect of the structure loss is isolated.
