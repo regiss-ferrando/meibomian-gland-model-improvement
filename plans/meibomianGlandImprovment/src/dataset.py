@@ -165,6 +165,7 @@ class MGD1kDataModule:
                  val_split: float = 0.15,
                  num_workers: int = 4,
                  seed: int = 42,
+                 image_size: int = 320,
                  crop_to_eyelid_roi: bool = True,
                  roi_margin: float = 0.05,
                  augment: bool = True):
@@ -179,6 +180,7 @@ class MGD1kDataModule:
             val_split: Fraction for validation
             num_workers: Number of workers for dataloader
             seed: Random seed for reproducibility
+            image_size: Square image and mask size after preprocessing
             crop_to_eyelid_roi: Crop gland samples to eyelid ROI before resizing
             roi_margin: Fractional margin added around the eyelid ROI crop
             augment: Apply paired augmentations to the training split
@@ -188,6 +190,7 @@ class MGD1kDataModule:
         self.batch_size = batch_size
         self.num_workers = num_workers
         self.seed = seed
+        self.image_size = image_size
         self.pin_memory = torch.cuda.is_available()
         self.crop_to_eyelid_roi = crop_to_eyelid_roi
         self.roi_margin = roi_margin
@@ -208,7 +211,7 @@ class MGD1kDataModule:
         self.test_split = 1.0 - train_split - val_split
         
         # Create preprocessing pipeline
-        self.preprocessing = PreprocessingPipeline()
+        self.preprocessing = PreprocessingPipeline(image_size=image_size)
         
         # Load full dataset
         self.full_dataset = MGD1kDataset(

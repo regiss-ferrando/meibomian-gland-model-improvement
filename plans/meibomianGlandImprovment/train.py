@@ -239,6 +239,8 @@ def main():
                        help='Number of epochs')
     parser.add_argument('--batch-size', type=int, default=BATCH_SIZE,
                        help='Batch size')
+    parser.add_argument('--image-size', type=int, default=IMAGE_SIZE,
+                       help='Square image and mask size after preprocessing')
     parser.add_argument('--lr', type=float, default=LEARNING_RATE,
                        help='Learning rate')
     parser.add_argument('--backbone', type=str, default=BACKBONE,
@@ -302,6 +304,7 @@ def main():
         mask_type=args.mask_type,
         batch_size=args.batch_size,
         num_workers=args.num_workers,
+        image_size=args.image_size,
         crop_to_eyelid_roi=not args.no_eyelid_roi,
         roi_margin=args.roi_margin,
         augment=not args.no_augmentation,

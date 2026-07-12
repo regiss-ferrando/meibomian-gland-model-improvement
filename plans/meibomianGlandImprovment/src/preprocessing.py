@@ -29,6 +29,8 @@ class PreprocessingPipeline:
         mean: Optional[float] = None,
         std: Optional[float] = None,
     ):
+        if image_size < 1:
+            raise ValueError(f"image_size must be >= 1, got {image_size}")
         self.image_size = image_size
         self.clahe = cv2.createCLAHE(
             clipLimit=clahe_clip_limit,
