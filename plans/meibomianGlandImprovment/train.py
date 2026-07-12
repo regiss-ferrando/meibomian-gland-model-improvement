@@ -122,6 +122,9 @@ def evaluate(model: nn.Module,
         'mean_iou': 0.0,
         'pred_foreground': 0.0,
         'target_foreground': 0.0,
+        'betti0_abs_error': 0.0,
+        'betti0_additional_components': 0.0,
+        'betti0_missing_components': 0.0,
     }
     
     with torch.no_grad():
@@ -137,7 +140,9 @@ def evaluate(model: nn.Module,
             loss = criterion(logits, masks)
             
             # Calculate metrics
-            batch_metrics = SegmentationMetrics.calculate_metrics(logits, masks)
+            batch_metrics = SegmentationMetrics.calculate_metrics(
+                logits, masks, include_topology=True
+            )
             
             # Accumulate metrics
             metrics['loss'] += loss.item()
@@ -147,6 +152,9 @@ def evaluate(model: nn.Module,
             metrics['mean_iou'] += batch_metrics['mean_iou']
             metrics['pred_foreground'] += batch_metrics['pred_foreground']
             metrics['target_foreground'] += batch_metrics['target_foreground']
+            metrics['betti0_abs_error'] += batch_metrics['betti0_abs_error']
+            metrics['betti0_additional_components'] += batch_metrics['betti0_additional_components']
+            metrics['betti0_missing_components'] += batch_metrics['betti0_missing_components']
     
     # Average metrics
     n_batches = len(data_loader)
@@ -270,6 +278,8 @@ def main():
                        help='Weight for soft centerline Dice loss on thin gland structures')
     parser.add_argument('--cldice-iterations', type=int, default=10,
                        help='Soft skeletonization iterations used by clDice')
+    parser.add_argument('--betti-weight', type=float, default=0.0,
+                       help='Weight for official Betti matching loss restricted to H0')
     parser.add_argument('--no-eyelid-roi', action='store_true',
                        help='Disable eyelid ROI cropping for gland segmentation')
     parser.add_argument('--roi-margin', type=float, default=ROI_MARGIN,
@@ -347,6 +357,7 @@ def main():
         hard_negative_min_prob=args.hard_negative_min_prob,
         cldice_weight=args.cldice_weight,
         cldice_iterations=args.cldice_iterations,
+        betti_weight=args.betti_weight,
     ).to(device)
     
     # Setup tensorboard

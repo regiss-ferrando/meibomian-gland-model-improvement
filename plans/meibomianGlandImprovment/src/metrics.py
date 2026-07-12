@@ -5,9 +5,37 @@ Segmentation evaluation metrics
 import torch
 import torch.nn.functional as F
 import numpy as np
+import cv2
 
 
 class SegmentationMetrics:
+
+    @staticmethod
+    def betti0_metrics(logits: torch.Tensor, targets: torch.Tensor) -> dict:
+        """Return per-image connected-component errors using 8-connectivity."""
+        predictions = SegmentationMetrics._get_predictions(logits).detach().cpu().numpy()
+        target_arrays = targets.detach().cpu().numpy()
+        absolute_errors = []
+        additional = []
+        missing = []
+
+        for prediction, target in zip(predictions, target_arrays):
+            pred_beta0 = cv2.connectedComponents(
+                (prediction == 1).astype(np.uint8), connectivity=8
+            )[0] - 1
+            target_beta0 = cv2.connectedComponents(
+                (target == 1).astype(np.uint8), connectivity=8
+            )[0] - 1
+            delta = int(pred_beta0) - int(target_beta0)
+            absolute_errors.append(abs(delta))
+            additional.append(max(delta, 0))
+            missing.append(max(-delta, 0))
+
+        return {
+            "betti0_abs_error": float(np.mean(absolute_errors)),
+            "betti0_additional_components": float(np.mean(additional)),
+            "betti0_missing_components": float(np.mean(missing)),
+        }
 
     @staticmethod
     def _get_predictions(logits: torch.Tensor):
@@ -203,14 +231,15 @@ class SegmentationMetrics:
     def calculate_metrics(
         logits: torch.Tensor,
         targets: torch.Tensor,
-        num_classes: int = 2
+        num_classes: int = 2,
+        include_topology: bool = False,
     ):
         """
         Compute all metrics.
         """
         preds = SegmentationMetrics._get_predictions(logits)
 
-        return {
+        metrics = {
             "soft_dice":
                 SegmentationMetrics.soft_dice(
                     logits,
@@ -248,3 +277,6 @@ class SegmentationMetrics:
             "target_foreground":
                 (targets == 1).float().mean().item(),
         }
+        if include_topology:
+            metrics.update(SegmentationMetrics.betti0_metrics(logits, targets))
+        return metrics

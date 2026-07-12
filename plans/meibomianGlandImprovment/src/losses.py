@@ -2,6 +2,9 @@
 Loss functions for binary meibomian gland segmentation.
 """
 
+import importlib
+
+import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -59,6 +62,7 @@ class CombinedLoss(nn.Module):
         hard_negative_min_prob: float = 0.0,
         cldice_weight: float = 0.0,
         cldice_iterations: int = 10,
+        betti_weight: float = 0.0,
         smooth: float = 1e-5,
     ):
         super().__init__()
@@ -77,6 +81,8 @@ class CombinedLoss(nn.Module):
         )
         self.cldice_weight = cldice_weight
         self.cldice_loss = SoftClDiceLoss(iterations=cldice_iterations, smooth=smooth)
+        self.betti_weight = betti_weight
+        self.betti_loss = BettiMatchingLossH0() if betti_weight > 0 else None
 
     def forward(self, logits: torch.Tensor, targets: torch.Tensor) -> torch.Tensor:
         _validate_binary_segmentation_inputs(logits, targets)
@@ -92,7 +98,124 @@ class CombinedLoss(nn.Module):
         if self.cldice_weight > 0:
             loss = loss + self.cldice_weight * self.cldice_loss(logits, targets)
 
+        if self.betti_weight > 0:
+            loss = loss + self.betti_weight * self.betti_loss(logits, targets)
+
         return loss
+
+
+class BettiMatchingLossH0(nn.Module):
+    """Betti matching loss restricted to connected components (H0).
+
+    The official ``betti_matching`` C++ module identifies persistence-pair
+    coordinates on detached CPU arrays. Loss values are then gathered from the
+    original PyTorch probability tensor, so gradients flow to the network.
+    """
+
+    def __init__(self):
+        super().__init__()
+        try:
+            self.betti_matching = importlib.import_module("betti_matching")
+        except ImportError as exc:
+            raise ImportError(
+                "BettiMatchingLossH0 requires the official betti_matching module. "
+                "Build nstucki/Betti-Matching-3D and add its build directory "
+                "to PYTHONPATH. The baseline does not require this dependency "
+                "when --betti-weight is zero."
+            ) from exc
+
+    @staticmethod
+    def _coordinates(array, device: torch.device, dimensions: int) -> torch.Tensor:
+        coordinates = np.asarray(array, dtype=np.int64)
+        if coordinates.size == 0:
+            return torch.empty((0, dimensions), dtype=torch.long, device=device)
+        return torch.as_tensor(coordinates, dtype=torch.long, device=device)
+
+    @staticmethod
+    def _values_at(array: torch.Tensor, coordinates: torch.Tensor) -> torch.Tensor:
+        if coordinates.shape[0] == 0:
+            return array.new_empty((0,))
+        return array[tuple(coordinates[:, dimension] for dimension in range(coordinates.shape[1]))]
+
+    def _loss_for_image(self, prediction: torch.Tensor, target: torch.Tensor, result) -> torch.Tensor:
+        dimensions = prediction.ndim
+        device = prediction.device
+
+        pred_match_birth = self._coordinates(
+            result.input1_matched_birth_coordinates[0], device, dimensions
+        )
+        pred_match_death = self._coordinates(
+            result.input1_matched_death_coordinates[0], device, dimensions
+        )
+        target_match_birth = self._coordinates(
+            result.input2_matched_birth_coordinates[0], device, dimensions
+        )
+        target_match_death = self._coordinates(
+            result.input2_matched_death_coordinates[0], device, dimensions
+        )
+        pred_unmatched_birth = self._coordinates(
+            result.input1_unmatched_birth_coordinates[0], device, dimensions
+        )
+        pred_unmatched_death = self._coordinates(
+            result.input1_unmatched_death_coordinates[0], device, dimensions
+        )
+
+        pred_matched = torch.stack(
+            (
+                self._values_at(prediction, pred_match_birth),
+                self._values_at(prediction, pred_match_death),
+            ),
+            dim=1,
+        )
+        target_matched = torch.stack(
+            (
+                self._values_at(target, target_match_birth),
+                self._values_at(target, target_match_death),
+            ),
+            dim=1,
+        )
+        pred_unmatched = torch.stack(
+            (
+                self._values_at(prediction, pred_unmatched_birth),
+                self._values_at(prediction, pred_unmatched_death),
+            ),
+            dim=1,
+        )
+
+        matched_loss = 2.0 * ((pred_matched - target_matched) ** 2).sum()
+        unmatched_loss = ((pred_unmatched[:, 0] - pred_unmatched[:, 1]) ** 2).sum()
+        return matched_loss + unmatched_loss
+
+    def forward(self, logits: torch.Tensor, targets: torch.Tensor) -> torch.Tensor:
+        _validate_binary_segmentation_inputs(logits, targets)
+        foreground = F.softmax(logits, dim=1)[:, 1]
+        targets = targets.float()
+
+        # The official implementation uses sublevel filtrations. Inverting the
+        # foreground maps produces the desired foreground superlevel filtration.
+        filtration_predictions = 1.0 - foreground
+        filtration_targets = 1.0 - targets
+        prediction_arrays = [
+            np.ascontiguousarray(image.detach().cpu().numpy(), dtype=np.float64)
+            for image in filtration_predictions
+        ]
+        target_arrays = [
+            np.ascontiguousarray(image.detach().cpu().numpy(), dtype=np.float64)
+            for image in filtration_targets
+        ]
+        results = self.betti_matching.compute_matching(
+            prediction_arrays,
+            target_arrays,
+            include_input1_unmatched_pairs=True,
+            include_input2_unmatched_pairs=False,
+        )
+        losses = [
+            self._loss_for_image(prediction, target, result)
+            for prediction, target, result in zip(
+                filtration_predictions, filtration_targets, results
+            )
+        ]
+        return torch.stack(losses).mean()
 
 
 class HardNegativeLoss(nn.Module):
