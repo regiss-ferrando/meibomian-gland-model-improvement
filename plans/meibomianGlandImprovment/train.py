@@ -6,6 +6,7 @@ import argparse
 import cv2
 import json
 import logging
+import random
 from pathlib import Path
 from datetime import datetime
 
@@ -20,6 +21,19 @@ from src.dataset import MGD1kDataModule
 from src.losses import CombinedLoss
 from src.model import create_model
 from src.metrics import SegmentationMetrics
+
+
+def set_training_seed(seed: int | None) -> None:
+    """Seed training randomness without changing historical runs by default."""
+    if seed is None:
+        return
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed_all(seed)
+    torch.backends.cudnn.benchmark = False
+    torch.backends.cudnn.deterministic = True
 
 
 def setup_logging(log_dir: Path, run_id: str) -> logging.Logger:
@@ -294,8 +308,11 @@ def main():
                        help='Multiplicative LR reduction factor')
     parser.add_argument('--prediction-samples', type=int, default=PREDICTION_SAMPLES,
                        help='Number of validation/test prediction overlays to save')
+    parser.add_argument('--training-seed', type=int, default=None,
+                       help='Optional reproducible seed for model initialization and training randomness')
     
     args = parser.parse_args()
+    set_training_seed(args.training_seed)
     run_id = datetime.now().strftime('%Y%m%d_%H%M%S')
     
     # Setup logging
