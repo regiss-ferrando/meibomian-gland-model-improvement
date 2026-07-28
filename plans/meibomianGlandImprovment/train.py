@@ -36,6 +36,29 @@ def set_training_seed(seed: int | None) -> None:
     torch.backends.cudnn.deterministic = True
 
 
+def betti_weight_for_epoch(
+    target_weight: float,
+    warmup_epochs: int,
+    ramp_epochs: int,
+    epoch_number: int,
+) -> float:
+    """Return the effective Betti weight for a one-indexed training epoch."""
+    if target_weight < 0:
+        raise ValueError("betti_weight must be non-negative")
+    if warmup_epochs < 0:
+        raise ValueError("betti_warmup_epochs must be non-negative")
+    if ramp_epochs < 0:
+        raise ValueError("betti_ramp_epochs must be non-negative")
+    if epoch_number < 1:
+        raise ValueError("epoch_number must be at least 1")
+    if target_weight == 0 or epoch_number <= warmup_epochs:
+        return 0.0
+    if ramp_epochs == 0:
+        return target_weight
+    progress = min((epoch_number - warmup_epochs) / ramp_epochs, 1.0)
+    return target_weight * progress
+
+
 def setup_logging(log_dir: Path, run_id: str) -> logging.Logger:
     """Setup logging configuration"""
     log_file = log_dir / f"training_{run_id}.log"
@@ -294,6 +317,10 @@ def main():
                        help='Soft skeletonization iterations used by clDice')
     parser.add_argument('--betti-weight', type=float, default=0.0,
                        help='Weight for official Betti matching loss restricted to H0')
+    parser.add_argument('--betti-warmup-epochs', type=int, default=0,
+                       help='Initial epochs with an effective Betti weight of zero')
+    parser.add_argument('--betti-ramp-epochs', type=int, default=0,
+                       help='Epochs used to linearly ramp Betti weight to --betti-weight')
     parser.add_argument('--no-eyelid-roi', action='store_true',
                        help='Disable eyelid ROI cropping for gland segmentation')
     parser.add_argument('--roi-margin', type=float, default=ROI_MARGIN,
@@ -389,6 +416,17 @@ def main():
     
     for epoch in range(args.epochs):
         logger.info(f"\n--- Epoch {epoch+1}/{args.epochs} ---")
+        effective_betti_weight = betti_weight_for_epoch(
+            args.betti_weight,
+            args.betti_warmup_epochs,
+            args.betti_ramp_epochs,
+            epoch + 1,
+        )
+        criterion.betti_weight = effective_betti_weight
+        logger.info(
+            f"Effective Betti weight: {effective_betti_weight:.6f} "
+            f"(target: {args.betti_weight:.6f})"
+        )
         
         # Train
         train_metrics = train_epoch(model, train_loader, optimizer, criterion, str(device), logger)
@@ -410,9 +448,11 @@ def main():
         for key, value in val_metrics.items():
             writer.add_scalar(f'val/{key}', value, epoch)
         writer.add_scalar('train/lr', optimizer.param_groups[0]['lr'], epoch)
+        writer.add_scalar('train/betti_weight', effective_betti_weight, epoch)
         history.append({
             'epoch': epoch + 1,
             'lr': optimizer.param_groups[0]['lr'],
+            'betti_weight': effective_betti_weight,
             'train': train_metrics,
             'val': val_metrics,
         })

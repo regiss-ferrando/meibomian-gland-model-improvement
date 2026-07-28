@@ -10,6 +10,13 @@ The default `--betti-weight 0.0` keeps the historical CE + Dice baseline
 unchanged and does not require the external module. A positive weight requires
 building the module and adding its build directory to `PYTHONPATH`.
 
+The optional schedule arguments `--betti-warmup-epochs` and
+`--betti-ramp-epochs` default to zero, preserving the historical constant-weight
+behavior. For example, a warmup of 10 and a ramp of 10 keep Betti disabled for
+epochs 1--10, then linearly increase its effective weight from epoch 11 until
+the target weight is reached at epoch 20. The effective value is saved in the
+history JSON and TensorBoard logs.
+
 The C++ implementation computes persistence information on detached CPU
 arrays. PyTorch then evaluates the H0 loss at the returned critical coordinates,
 which preserves gradients with respect to the foreground probability map.
