@@ -17,6 +17,11 @@ epochs 1--10, then linearly increase its effective weight from epoch 11 until
 the target weight is reached at epoch 20. The effective value is saved in the
 history JSON and TensorBoard logs.
 
+Topology fine-tuning can be initialized from an existing segmentation model
+with `--initial-checkpoint`. Only the model weights are restored; the optimizer,
+learning-rate scheduler and early-stopping state start fresh. Omitting the
+option preserves the historical training-from-scratch behavior.
+
 The C++ implementation computes persistence information on detached CPU
 arrays. PyTorch then evaluates the H0 loss at the returned critical coordinates,
 which preserves gradients with respect to the foreground probability map.

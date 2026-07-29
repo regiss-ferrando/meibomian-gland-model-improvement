@@ -59,6 +59,24 @@ def betti_weight_for_epoch(
     return target_weight * progress
 
 
+def load_initial_model_weights(
+    model: nn.Module,
+    checkpoint_path: str | Path,
+    device: torch.device | str,
+) -> Path:
+    """Load model weights for fine-tuning without restoring optimizer state."""
+    path = Path(checkpoint_path).expanduser().resolve()
+    if not path.is_file():
+        raise FileNotFoundError(f"Initial checkpoint not found: {path}")
+    payload = torch.load(path, map_location=device)
+    if isinstance(payload, dict) and "model_state_dict" in payload:
+        state_dict = payload["model_state_dict"]
+    else:
+        state_dict = payload
+    model.load_state_dict(state_dict)
+    return path
+
+
 def setup_logging(log_dir: Path, run_id: str) -> logging.Logger:
     """Setup logging configuration"""
     log_file = log_dir / f"training_{run_id}.log"
@@ -299,6 +317,8 @@ def main():
                        help='Number of workers for dataloader')
     parser.add_argument('--no-pretrained', action='store_true',
                        help='Disable ImageNet-pretrained backbone weights')
+    parser.add_argument('--initial-checkpoint', type=str, default=None,
+                       help='Optional model checkpoint used to initialize fine-tuning')
     parser.add_argument('--ce-weight', type=float, default=CE_LOSS_WEIGHT,
                        help='Cross-entropy weight in the combined loss')
     parser.add_argument('--dice-weight', type=float, default=DICE_LOSS_WEIGHT,
@@ -382,6 +402,12 @@ def main():
         device=str(device)
     )
     logger.info(f"Model created and moved to {device}")
+    if args.initial_checkpoint:
+        initial_path = load_initial_model_weights(model, args.initial_checkpoint, device)
+        logger.info(
+            f"Loaded initial model weights from {initial_path}; "
+            "optimizer and scheduler will start from a fresh state"
+        )
     
     # Setup optimizer and loss
     optimizer = optim.Adam(model.parameters(), lr=args.lr, weight_decay=WEIGHT_DECAY)
